@@ -177,7 +177,16 @@ prop_deep_simplify phi = tautology $ Iff phi (simplify phi)
 -- negation normal form (negation is only applied to variables)
 -- Question: What is complexity of this transformation in terms of formula size?
 nnf :: Formula -> Formula
-nnf = undefined
+nnf f = case f of
+  T -> T
+  F -> F
+  (Var x) -> Var x
+  Not (Not g) -> g
+  Not (And phi psi) -> Or (Not $ nnf phi) (Not $ nnf psi)
+  Not (Or phi psi) -> And (Not $ nnf phi) (Not $ nnf psi)
+  Not g -> Not $ nnf g
+  Implies phi psi -> Or (Not $ nnf phi) psi
+  Iff phi psi -> And (Or (Not $ nnf phi) psi) (Or (Not $ nnf psi) phi)
 
 -- checks that the input is in nnf
 is_nnf :: Formula -> Bool
