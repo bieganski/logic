@@ -1,0 +1,112 @@
+
+./lab01.hs,3148
+module Lab01 Lab012,3
+type VarName VarName10,11
+instance instance13,14
+data Formula Formula17,18
+data Formula = T T17,18
+data Formula = T | F F17,18
+data Formula = T | F | Var Var17,18
+data Formula = T | F | Var VarName | Not Not17,18
+data Formula = T | F | Var VarName | Not Formula | And And17,18
+data Formula = T | F | Var VarName | Not Formula | And Formula Formula | Or Or17,18
+data Formula = T | F | Var VarName | Not Formula | And Formula Formula | Or Formula Formula | Implies Implies17,18
+data Formula = T | F | Var VarName | Not Formula | And Formula Formula | Or Formula Formula | Implies Formula Formula | Iff Iff17,18
+(/(20,21
+p p32,33
+q q33,34
+r r34,35
+s s35,36
+satisfiable_formulas satisfiable_formulas36,37
+unsatisfiable_formulas unsatisfiable_formulas37,38
+variables variables67,68
+variables variables68,69
+type Valuation Valuation79,80
+eval eval82,83
+eval eval83,84
+extend extend93,94
+extend extend94,95
+valuations valuations99,100
+valuations valuations100,101
+prop_valuations prop_valuations104,105
+prop_valuations prop_valuations105,106
+satisfiable satisfiable109,110
+satisfiable satisfiable110,111
+tautology tautology113,114
+tautology tautology114,115
+simplify simplify118,119
+simplify simplify120,121
+prop_simplify prop_simplify155,156
+prop_simplify prop_simplify156,157
+deep_simplify deep_simplify159,160
+deep_simplify deep_simplify160,161
+prop_deep_simplify prop_deep_simplify165,166
+prop_deep_simplify prop_deep_simplify166,167
+nnf nnf172,173
+nnf nnf173,174
+is_nnf is_nnf176,177
+is_nnf is_nnf177,178
+prop_nnf prop_nnf187,188
+prop_nnf prop_nnf188,189
+data Literal Literal192,193
+data Literal = Pos Pos192,193
+data Literal = Pos VarName | Neg Neg192,193
+literal2var literal2var194,195
+literal2var literal2var195,196
+opposite opposite198,199
+opposite opposite199,200
+dnf dnf203,204
+dnf dnf204,205
+dnf2formula dnf2formula212,213
+dnf2formula dnf2formula213,214
+test_dnf test_dnf220,221
+test_dnf test_dnf221,222
+positive_literals positive_literals225,226
+positive_literals positive_literals226,227
+negative_literals negative_literals228,229
+negative_literals negative_literals229,230
+literals literals231,232
+literals literals232,233
+type SatSolver SatSolver234,235
+sat_dnf sat_dnf240,241
+sat_dnf sat_dnf241,242
+prop_sat_dnf prop_sat_dnf244,245
+prop_sat_dnf prop_sat_dnf245,246
+test_solver test_solver247,248
+test_solver test_solver248,249
+prop_sat_dnf2 prop_sat_dnf2251,252
+prop_sat_dnf2 prop_sat_dnf2252,253
+x_1_2 x_1_2256,257
+x_1_3 x_1_3257,258
+x_1_4 x_1_4258,259
+x_1_5 x_1_5259,260
+x_1_6 x_1_6260,261
+x_2_3 x_2_3261,262
+x_2_4 x_2_4262,263
+x_2_5 x_2_5263,264
+x_2_6 x_2_6264,265
+x_3_4 x_3_4265,266
+x_3_5 x_3_5266,267
+x_3_6 x_3_6267,268
+x_4_5 x_4_5268,269
+x_4_6 x_4_6269,270
+x_5_6 x_5_6270,271
+hard_unsat_formula hard_unsat_formula273,274
+ramsey ramsey280,281
+ramsey ramsey281,282
+prop_ramsey1 prop_ramsey1284,285
+prop_ramsey1 prop_ramsey1285,286
+prop_ramsey2 prop_ramsey2287,288
+prop_ramsey2 prop_ramsey2288,289
+main main291,292
+
+./utils.hs,245
+module Utils Utils0,1
+rmdups rmdups5,6
+rmdups rmdups6,7
+checkAll checkAll8,9
+checkAll checkAll9,10
+distribute distribute13,14
+distribute distribute14,15
+prop_distribute prop_distribute19,20
+prop_distribute prop_distribute20,21
