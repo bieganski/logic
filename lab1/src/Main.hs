@@ -84,11 +84,11 @@ eval :: Formula -> Valuation -> Bool
 eval T rho = True
 eval F rho = False
 eval (Var x) rho = rho x
-eval (Not phi) rho = undefined
-eval (And phi psi) rho = undefined
-eval (Or phi psi) rho = undefined
-eval (Implies phi psi) rho = undefined
-eval (Iff phi psi) rho = undefined
+eval (Not phi) rho = not $ eval phi rho
+eval (And phi psi) rho = (eval phi rho) && (eval psi rho)
+eval (Or phi psi) rho = (eval phi rho) || (eval psi rho)
+eval (Implies phi psi) rho = (not $ eval phi rho) || (eval psi rho)
+eval (Iff phi psi) rho = (eval (Implies phi psi) rho) && (eval (Implies psi phi) rho)
 
 -- updating a truth valuation
 extend :: Valuation -> VarName -> Bool -> Valuation
@@ -114,11 +114,11 @@ prop_valuations xs = length xs <= 5 ==> length (valuations xs) == 2^length xs
 -- satisfiability checker based on truth tables (TODO)
 -- our first (trivial) sat solver
 satisfiable :: Formula -> Bool
-satisfiable phi = undefined
+satisfiable phi = any (eval phi) $ valuations $ variables phi
 
 -- tautology checker based on truth tables (TODO)
 tautology :: Formula -> Bool
-tautology phi = undefined
+tautology phi = all (eval phi) $ valuations $ variables phi
 
 -- =============== formula simpification
 
