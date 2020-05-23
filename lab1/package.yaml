@@ -35,6 +35,11 @@ executables:
     - -with-rtsopts=-N
     dependencies:
       - QuickCheck
+  lab2-exe:
+    main:                Lab02.hs
+    dependencies:
+      - QuickCheck
+
 
 tests:
   lab1-test:
