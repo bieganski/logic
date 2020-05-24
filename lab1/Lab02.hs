@@ -2,7 +2,7 @@ module Main where
 
 import Test.QuickCheck
 import Data.List
-
+import qualified Control.Monad.State as S
 -- ============== FROM Utils.hs ==========================
 
 rmdups :: (Ord a) => [a] -> [a]
@@ -200,6 +200,7 @@ cnf phi = go $ nnf phi where
   go (And phi psi) = go phi ++ go psi
   go (Or phi psi) = distribute (go phi) (go psi)
 
+
 -- TODO
 -- transform a formula to equi-satisfiable cnf (linear complexity)
 -- there is no assumption on the input formula
@@ -208,8 +209,43 @@ cnf phi = go $ nnf phi where
 -- - For a subformula of the form phi = phi1 op phi2, use cnf :: Formula -> [[Literal]] above to produce the cnf psi_phi of x_phi <--> x_phi1 op x_phi2
 -- - Concatenate all the cnfs psi_phi for every subformula phi.
 -- - See slide #5 of https://github.com/lclem/logic_course/blob/master/docs/slides/03-resolution.pdf
+
+s0 = 0
+
+ecnfHelp :: Formula -> S.State Integer (String, CNF)
+ecnfHelp ff = do
+  n1 <- S.get >>= return . show
+  S.modify (+1)
+  n2 <- S.get >>= return . show
+  S.modify (+1)
+  --return $ ("", [[]])
+  case ff of
+    T -> return (n1, [])
+    F -> return (n1, [[]])
+    Var x -> return (n1, [[Pos x]])
+    Not f -> do
+      (s, c) <- ecnfHelp f
+      (ss, cc) <- ecnfHelp (Iff (Var s) f)
+      return (n1, [[Neg s]] ++ c ++ cc)
+    
+      -- let new = show f in n1 [[Neg new]] ++ (ecnf f) ++ (ecnf (Iff (Var new) f))
+    --And f1 f2 -> let new = show f1 ++ show f2 in (ecnf f1) ++ 
+  
+  
+
+
+
 ecnf :: Formula -> CNF
-ecnf = undefined
+ecnf f = snd $ S.evalState (ecnfHelp f) s0
+{-
+ecnf ff = case ff of
+  T -> []
+  F -> [[]]
+  Var x -> [[Pos x]]
+  Not f -> let new = show f in [[Neg new]] ++ (ecnf f) ++ (ecnf (Iff (Var new) f))
+  And f1 f2 -> let new = show f1 ++ show f2 in (ecnf f1) ++ 
+  
+-}
 
 equiSatisfiable :: Formula -> Formula -> Bool
 equiSatisfiable phi psi = satisfiable phi == satisfiable psi

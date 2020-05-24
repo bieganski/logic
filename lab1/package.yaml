@@ -39,6 +39,7 @@ executables:
     main:                Lab02.hs
     dependencies:
       - QuickCheck
+      - mtl
 
 
 tests:
