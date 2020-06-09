@@ -1,5 +1,8 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Main where
 
+import Debug.Trace
 import Test.QuickCheck
 import Data.List
 import qualified Control.Monad.State as S
@@ -216,36 +219,44 @@ ecnfHelp :: Formula -> S.State Integer (String, CNF)
 ecnfHelp ff = do
   n1 <- S.get >>= return . show
   S.modify (+1)
-  n2 <- S.get >>= return . show
-  S.modify (+1)
-  --return $ ("", [[]])
   case ff of
     T -> return (n1, [])
     F -> return (n1, [[]])
-    Var x -> return (n1, [[Pos x]])
+    Var x -> return (x, [[Pos x]])
     Not f -> do
-      (s, c) <- ecnfHelp f
-      (ss, cc) <- ecnfHelp (Iff (Var s) f)
-      return (n1, [[Neg s]] ++ c ++ cc)
-    
-      -- let new = show f in n1 [[Neg new]] ++ (ecnf f) ++ (ecnf (Iff (Var new) f))
-    --And f1 f2 -> let new = show f1 ++ show f2 in (ecnf f1) ++ 
-  
-  
+      (s :: String, c) <- ecnfHelp f
+      -- (ss, cc) <- ecnfHelp (Iff (Var s) f)
+      return (n1, (iff2cnf (Iff (Var n1) (Not (Var s)))) ++ c)
+    And f1 f2 -> do
+      (s1, c1) <- ecnfHelp f1
+      (s2, c2) <- ecnfHelp f2
+      let cnf = iff2cnf $ Iff (Var n1) (And (Var s1) (Var s2))
+      return (n1, c1 ++ c2 ++ cnf)
+    Or f1 f2 -> do
+      (s1, c1) <- ecnfHelp f1
+      (s2, c2) <- ecnfHelp f2
+      let cnf = iff2cnf $ Iff (Var n1) (Or (Var s1) (Var s2))
+      return (n1, c1 ++ c2 ++ cnf)
+    Implies f1 f2 -> do
+      ecnfHelp $ Or (Not f1) f2
+    Iff f1 f2 -> do
+      ecnfHelp $ Or (And f1 f2) (And (Not f1) (Not f2))
 
 
+iff2cnf :: Formula -> CNF
+iff2cnf f = case f of
+  Iff (Var x) (Var y) -> undefined
+  Iff (Var x) (Not (Var y)) -> [[Pos x, Neg y]]
+  Iff (Var x) (And (Var y) (Var z)) -> [[Pos x, Pos y, Pos z],
+                                        [Pos y, Neg x],
+                                        [Pos z, Neg x]]
+  Iff (Var x) (Or (Var p) (Var q)) -> [[Neg x, Pos p, Pos q],
+                                       [Pos x, Neg p],
+                                       [Pos x, Neg q]]
 
 ecnf :: Formula -> CNF
-ecnf f = snd $ S.evalState (ecnfHelp f) s0
-{-
-ecnf ff = case ff of
-  T -> []
-  F -> [[]]
-  Var x -> [[Pos x]]
-  Not f -> let new = show f in [[Neg new]] ++ (ecnf f) ++ (ecnf (Iff (Var new) f))
-  And f1 f2 -> let new = show f1 ++ show f2 in (ecnf f1) ++ 
-  
--}
+ecnf f = let res = S.evalState (ecnfHelp f) s0 in (snd res) ++ [[Pos $ fst res]] 
+
 
 equiSatisfiable :: Formula -> Formula -> Bool
 equiSatisfiable phi psi = satisfiable phi == satisfiable psi
@@ -276,11 +287,23 @@ prop_ecnf phi = equiSatisfiable phi (cnf2formula $ ecnf phi)
 -- Assumption 3: there is at least one clause
 -- Assumption 4: all clauses are nonempty
 
+stop :: CNF -> CNF
+stop lss = undefined
+
 resolution :: CNF -> CNF
 resolution lss = undefined
 
 prop_resolution :: Bool
 prop_resolution = resolution [[Pos "p", Pos "q"], [Neg "p", Neg "q"]] == [[Pos "q", Neg "q"]]
+
+
+
+
+-- dfs :: CNF -> CNF
+
+
+
+
 
 -- find all positive occurrences of a variable name
 positiveLiterals :: Clause -> [VarName]
@@ -297,7 +320,9 @@ literals ls = rmdups $ positiveLiterals ls ++ negativeLiterals ls
 -- TODO
 -- remove clauses containing a positive and a negative occurrence of the same literal
 removeTautologies :: CNF -> CNF
-removeTautologies lss = undefined
+removeTautologies lss = filter f lss where
+  f = \c -> [] == intersect (negativeLiterals c) (positiveLiterals c)
+
 
 -- TODO
 -- One literal rule (aka unit propagation):
@@ -306,8 +331,25 @@ removeTautologies lss = undefined
 -- Hint: Remove all occurrences of "opposite l"
 -- Hint: Was the initial formula satisfiable if an empty clause [....[]....] arises from this process? What should the whole formula reduce to in that case?
 -- see slide #6 of https://github.com/lclem/logic_course/blob/master/docs/slides/03-resolution.pdf
+-- TODO recursive call unneccessary?
 oneLiteral :: CNF -> CNF
-oneLiteral lss = undefined
+oneLiteral lss = case single lss of
+  Nothing -> lss -- trace (show lss) lss
+  Just lit -> res where -- trace (show res) res
+    res = oneLiteral $ stop_empty $ map remove_opp $ remove_clauses lss
+    lit' = opp lit
+    remove_opp = filter (/= lit')
+    remove_clauses = filter $ \c -> not $ lit `elem` c
+    stop_empty ll  = if [] `elem` ll then [[]] else ll
+
+opp (Neg x) = Pos x
+opp (Pos x) = Neg x
+
+-- returns arbitrary unit literal
+single :: CNF -> Maybe Literal
+single lss = case filter (\c -> 1 == length c) lss of
+  [] -> Nothing
+  x -> Just $ (head . head) x -- trace (show $ (head . head) x) $ 
 
 -- correctness test
 -- Note: this test assumes that oneLiteral removes at one fell swoop all one literal clauses.
@@ -316,6 +358,7 @@ prop_oneLiteral :: Bool
 prop_oneLiteral =
   oneLiteral [[Pos "p"], [Pos "p", Pos "q", Pos "p", Pos "r"], [Neg "q", Pos "r", Neg "p", Neg "r", Neg "p"], [Neg "q", Neg "p"], [Pos "q", Pos "r", Pos "s"], [Neg "p", Pos "p"]] ==
     [[Neg "q",Pos "r",Neg "r"],[Neg "q"],[Pos "q",Pos "r",Pos "s"]] &&
+
   oneLiteral [[Pos "p2"],[Neg "p2",Pos "p"],[Neg "p2",Pos "p1"],[Neg "p",Neg "p1",Pos "p2"],[Neg "p1",Pos "q"],[Neg "p1",Pos "p0"],[Neg "q",Neg "p0",Pos "p1"],[Neg "p0",Pos "s"],[Neg "p0",Neg "p"],[Neg "s",Pos "p",Pos "p0"]] ==
     [[Pos "p"],[Pos "p1"],[Neg "p1",Pos "q"],[Neg "p1",Pos "p0"],[Neg "q",Neg "p0",Pos "p1"],[Neg "p0",Pos "s"],[Neg "p0",Neg "p"],[Neg "s",Pos "p",Pos "p0"]] &&
   oneLiteral [[Pos "q"],[Pos "p0"],[Neg "p0",Pos "s"],[Neg "p0"]] ==
@@ -327,7 +370,21 @@ prop_oneLiteral =
 -- see slide #7 of https://github.com/lclem/logic_course/blob/master/docs/slides/03-resolution.pdf
 -- this is the same as "elimination of pure literals" from the slide
 affirmativeNegative :: CNF -> CNF
-affirmativeNegative lss = undefined
+affirmativeNegative lss = map (filter $ \lit -> not $ (onion lit) `elem` unique) lss where
+  pos = concat (map positiveLiterals lss)
+  neg = concat (map positiveLiterals lss)
+  unique = (filter f pos) ++ (filter g neg)
+  f = \lit -> not $ lit `elem` neg
+  g = \lit -> not $ lit `elem` pos
+
+
+onion (Pos x) = x
+onion (Neg x) = x
+
+dual :: [Literal] -> [Literal]
+dual [] = []
+dual ((Pos x):xs) = ((Neg x):(dual xs))
+dual ((Neg x):xs) = ((Pos x):(dual xs))
 
 prop_affirmativeNegative :: Bool
 prop_affirmativeNegative =
@@ -362,8 +419,9 @@ prop_DP2 :: Bool
 prop_DP2 = test_solver satDP
 
 main = do 
-  quickCheckWith (stdArgs {maxSize = 5}) prop_ecnf
-  quickCheck prop_oneLiteral
-  quickCheck prop_resolution
-  quickCheckWith (stdArgs {maxSize = 10}) prop_DP
-  quickCheck prop_DP2
+  -- quickCheckWith (stdArgs {maxSize = 5}) prop_ecnf
+  -- quickCheck prop_oneLiteral
+  quickCheck prop_affirmativeNegative
+  --quickCheck prop_resolution
+  --quickCheckWith (stdArgs {maxSize = 10}) prop_DP
+  --quickCheck prop_DP2
