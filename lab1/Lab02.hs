@@ -215,28 +215,32 @@ cnf phi = go $ nnf phi where
 
 s0 = 0
 
-ecnfHelp :: Formula -> S.State Integer (String, CNF)
+lit2var (Pos x) = Var x
+lit2var (Neg x) = Not (Var x)
+
+ecnfHelp :: Formula -> S.State Integer (Literal, CNF)
 ecnfHelp ff = do
   n1 <- S.get >>= return . show
   S.modify (+1)
   case ff of
-    T -> return (n1, [])
-    F -> return (n1, [[]])
-    Var x -> return (x, [[Pos x]])
+    Var x -> return (Pos x, [])
     Not f -> do
-      (s :: String, c) <- ecnfHelp f
-      -- (ss, cc) <- ecnfHelp (Iff (Var s) f)
-      return (n1, (iff2cnf (Iff (Var n1) (Not (Var s)))) ++ c)
+      (s, c) <- ecnfHelp f
+      return (opp s, c)
     And f1 f2 -> do
       (s1, c1) <- ecnfHelp f1
       (s2, c2) <- ecnfHelp f2
-      let cnf = iff2cnf $ Iff (Var n1) (And (Var s1) (Var s2))
-      return (n1, c1 ++ c2 ++ cnf)
+      let cnf = case (s1, s2) of
+                  (Neg ss1, Neg ss2) -> iff2cnf $ Iff (Var n1) (Or (lit2var $ opp s1) (lit2var $ opp s2))
+                  _ -> iff2cnf $ Iff (Var n1) (And (lit2var s1) (lit2var s2))
+      return (Pos n1, c1++c2++cnf)
     Or f1 f2 -> do
       (s1, c1) <- ecnfHelp f1
       (s2, c2) <- ecnfHelp f2
-      let cnf = iff2cnf $ Iff (Var n1) (Or (Var s1) (Var s2))
-      return (n1, c1 ++ c2 ++ cnf)
+      let cnf = case (s1, s2) of
+                  (Neg ss1, Neg ss2) -> iff2cnf $ Iff (Var n1) (And (lit2var $ opp s1) (lit2var $ opp s2))
+                  _ -> iff2cnf $ Iff (Var n1) (Or (lit2var s1) (lit2var s2))
+      return (Pos n1, c1++c2++cnf)
     Implies f1 f2 -> do
       ecnfHelp $ Or (Not f1) f2
     Iff f1 f2 -> do
@@ -245,17 +249,35 @@ ecnfHelp ff = do
 
 iff2cnf :: Formula -> CNF
 iff2cnf f = case f of
-  Iff (Var x) (Var y) -> undefined
-  Iff (Var x) (Not (Var y)) -> [[Pos x, Neg y]]
-  Iff (Var x) (And (Var y) (Var z)) -> [[Pos x, Pos y, Pos z],
+  Iff (Var x) (Var y) -> [[Neg x, Pos y], [Pos x, Neg y]]
+  Iff (Var x) (Not (Var y)) -> [[Pos x, Pos y], [Neg x, Neg y]]
+
+  Iff (Var x) (And (Var y) (Var z)) -> [[Pos x, Neg y, Neg z], -- that was ok
                                         [Pos y, Neg x],
                                         [Pos z, Neg x]]
-  Iff (Var x) (Or (Var p) (Var q)) -> [[Neg x, Pos p, Pos q],
+  Iff (Var x) (And (Not (Var y)) (Var z)) -> [[Pos x, Pos y, Neg z], -- TODO
+                                              [Neg y, Neg x],
+                                              [Pos z, Neg x]]
+  Iff (Var x) (And (Var y) (Not (Var z))) -> [[Pos x, Neg y, Pos z], -- TODO
+                                              [Pos y, Neg x],
+                                              [Neg z, Neg x]]                                             
+                                       
+  Iff (Var x) (Or (Var p) (Var q)) -> [[Neg x, Pos p, Pos q], -- that was ok
                                        [Pos x, Neg p],
                                        [Pos x, Neg q]]
+  Iff (Var x) (Or (Not (Var p)) (Var q)) -> [[Neg x, Neg p, Pos q], -- TODO
+                                             [Pos x, Pos p],
+                                             [Pos x, Neg q]]
+  Iff (Var x) (Or (Var p) (Not (Var q))) -> [[Neg x, Pos p, Neg q], -- TODO
+                                             [Pos x, Neg p],
+                                             [Pos x, Pos q]]                                      
+  _ -> trace ("AAA: " ++ show f) $ error "iff2cnf pattern matching error"
 
 ecnf :: Formula -> CNF
-ecnf f = let res = S.evalState (ecnfHelp f) s0 in (snd res) ++ [[Pos $ fst res]] 
+ecnf f = let d = deepSimplify f in case d of
+  T -> []
+  F -> [[]]
+  _ -> let res = S.evalState (ecnfHelp d) s0 in (snd res) ++ [[fst res]] 
 
 
 equiSatisfiable :: Formula -> Formula -> Bool
@@ -273,7 +295,7 @@ cnf2formula lss = foldr1 And (map go lss) where
 
 -- test for ecnf
 prop_ecnf :: Formula -> Bool
-prop_ecnf phi = equiSatisfiable phi (cnf2formula $ ecnf phi)
+prop_ecnf phi = equiSatisfiable phi $ trace (show $ ecnf phi) (cnf2formula $ ecnf phi)
 
 -- TODO
 -- RESOLUTION
@@ -418,10 +440,13 @@ prop_DP phi = -- unsafePerformIO (do print "Checking:"; print phi; return True) 
 prop_DP2 :: Bool
 prop_DP2 = test_solver satDP
 
+prop_simplify = F == deepSimplify (And (Var "p") F)
+
 main = do 
-  -- quickCheckWith (stdArgs {maxSize = 5}) prop_ecnf
+  quickCheckWith (stdArgs {maxSize = 5}) prop_ecnf
+  -- quickCheck prop_simplify
   -- quickCheck prop_oneLiteral
-  quickCheck prop_affirmativeNegative
+  -- quickCheck prop_affirmativeNegative
   --quickCheck prop_resolution
   --quickCheckWith (stdArgs {maxSize = 10}) prop_DP
   --quickCheck prop_DP2
